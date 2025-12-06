@@ -112,7 +112,15 @@ module ibex_lockstep import ibex_pkg::*; #(
   output logic                         alert_major_bus_o,
   input  ibex_mubi_t                   core_busy_i,
   input  logic                         test_en_i,
-  input  logic                         scan_rst_ni
+  input  logic                         scan_rst_ni,
+
+  // External CSR interface
+  input  logic                         csr_ext_ready_i,
+  output logic                         csr_ext_valid_o,
+  output ibex_pkg::csr_num_e           csr_ext_addr_o,
+  output logic [31:0]                  csr_ext_wdata_o,
+  output ibex_pkg::csr_op_e            csr_ext_op_o,
+  input  logic [31:0]                  csr_ext_rdata_i
 );
 
   localparam int unsigned LockstepOffsetW = $clog2(LockstepOffset);
@@ -485,7 +493,14 @@ module ibex_lockstep import ibex_pkg::*; #(
     .alert_minor_o          (shadow_alert_minor),
     .alert_major_internal_o (shadow_alert_major_internal),
     .alert_major_bus_o      (shadow_alert_major_bus),
-    .core_busy_o            (shadow_outputs_d.core_busy)
+    .core_busy_o            (shadow_outputs_d.core_busy),
+
+    .csr_ext_ready_i (1'b1),
+    .csr_ext_valid_o (),
+    .csr_ext_addr_o  (),
+    .csr_ext_wdata_o (),
+    .csr_ext_op_o    (),
+    .csr_ext_rdata_i (32'b0)
   );
 
   // Register the shadow core outputs

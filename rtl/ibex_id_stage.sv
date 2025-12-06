@@ -108,6 +108,7 @@ module ibex_id_stage #(
   input  logic                      csr_mstatus_tw_i,
   input  logic                      illegal_csr_insn_i,
   input  logic                      data_ind_timing_i,
+  input  logic                      stall_csr_i,
 
   // Interface to load store unit
   output logic                      lsu_req_o,
@@ -629,6 +630,7 @@ module ibex_id_stage #(
 
     .stall_id_i(stall_id),
     .stall_wb_i(stall_wb),
+    .stall_csr_i(stall_csr_i),
     .flush_id_o(flush_id),
     .ready_wb_i(ready_wb_i),
 

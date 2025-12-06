@@ -102,6 +102,7 @@ module ibex_controller #(
   // stall & flush signals
   input  logic                  stall_id_i,
   input  logic                  stall_wb_i,
+  input  logic                  stall_csr_i,
   output logic                  flush_id_o,
   input  logic                  ready_wb_i,
 
@@ -858,7 +859,7 @@ module ibex_controller #(
   // If high current instruction cannot complete this cycle. Either because it needs more cycles to
   // finish (stall_id_i) or because the writeback stage cannot accept it yet (stall_wb_i). If there
   // is no writeback stage stall_wb_i is a constant 0.
-  assign stall = stall_id_i | stall_wb_i;
+  assign stall = stall_id_i | stall_wb_i | stall_csr_i;
 
   // signal to IF stage that ID stage is ready for next instr
   assign id_in_ready_o = ~stall & ~halt_if & ~retain_id;

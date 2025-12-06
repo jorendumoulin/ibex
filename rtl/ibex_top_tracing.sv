@@ -89,8 +89,15 @@ module ibex_top_tracing import ibex_pkg::*; #(
   output logic                         alert_minor_o,
   output logic                         alert_major_internal_o,
   output logic                         alert_major_bus_o,
-  output logic                         core_sleep_o
+  output logic                         core_sleep_o,
 
+  // External CSR interface
+  input  logic                         csr_ext_ready_i,
+  output logic                         csr_ext_valid_o,
+  output ibex_pkg::csr_num_e           csr_ext_addr_o,
+  output logic [31:0]                  csr_ext_wdata_o,
+  output ibex_pkg::csr_op_e            csr_ext_op_o,
+  input  logic [31:0]                  csr_ext_rdata_i
 );
 
   // ibex_tracer relies on the signals from the RISC-V Formal Interface
@@ -276,7 +283,14 @@ module ibex_top_tracing import ibex_pkg::*; #(
     .alert_minor_o,
     .alert_major_internal_o,
     .alert_major_bus_o,
-    .core_sleep_o
+    .core_sleep_o,
+
+    .csr_ext_ready_i,
+    .csr_ext_valid_o,
+    .csr_ext_addr_o,
+    .csr_ext_wdata_o,
+    .csr_ext_op_o,
+    .csr_ext_rdata_i
   );
 
   ibex_tracer
