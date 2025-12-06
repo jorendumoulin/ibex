@@ -153,7 +153,15 @@ module ibex_top import ibex_pkg::*; #(
   output logic                         core_sleep_o,
 
   // DFT bypass controls
-  input logic                          scan_rst_ni
+  input logic                          scan_rst_ni,
+
+  // External CSR interface
+  input  logic                         csr_ext_ready_i,
+  output logic                         csr_ext_valid_o,
+  output ibex_pkg::csr_num_e           csr_ext_addr_o,
+  output logic [31:0]                  csr_ext_wdata_o,
+  output ibex_pkg::csr_op_e            csr_ext_op_o,
+  input  logic [31:0]                  csr_ext_rdata_i
 );
 
   localparam bit          Lockstep              = SecureIbex;
@@ -430,7 +438,14 @@ module ibex_top import ibex_pkg::*; #(
     .alert_minor_o         (core_alert_minor),
     .alert_major_internal_o(core_alert_major_internal),
     .alert_major_bus_o     (core_alert_major_bus),
-    .core_busy_o           (core_busy_d)
+    .core_busy_o           (core_busy_d),
+
+    .csr_ext_ready_i,
+    .csr_ext_valid_o,
+    .csr_ext_addr_o,
+    .csr_ext_wdata_o,
+    .csr_ext_op_o,
+    .csr_ext_rdata_i
   );
 
   /////////////////////////////////
@@ -1101,7 +1116,14 @@ module ibex_top import ibex_pkg::*; #(
       .alert_major_bus_o      (lockstep_alert_major_bus_local),
       .core_busy_i            (core_busy_local),
       .test_en_i              (test_en_i),
-      .scan_rst_ni            (scan_rst_ni)
+      .scan_rst_ni            (scan_rst_ni),
+
+      .csr_ext_ready_i        (csr_ext_ready_i),
+      .csr_ext_valid_o        (csr_ext_valid_o),
+      .csr_ext_addr_o         (csr_ext_addr_o),
+      .csr_ext_wdata_o        (csr_ext_wdata_o),
+      .csr_ext_op_o           (csr_ext_op_o),
+      .csr_ext_rdata_i        (csr_ext_rdata_i)
     );
 
     prim_buf u_prim_buf_alert_minor (
