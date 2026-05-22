@@ -1,0 +1,125 @@
+# Bender manifest for the lowRISC Ibex core.
+#
+# Target conventions:
+#   synthesis        — Bender-standard target name; gates out behavioural
+#                      sim-only files (tracer, top_tracing).
+#   ibex_tracing     — opt-in inclusion of the RVFI tracer wrapper. Useful
+#                      for simulation when trace_core_*.log output is wanted.
+#                      Implies non-synthesis use.
+#   ibex_regfile_latch — pick the latch-based regfile (default for ASIC).
+#   ibex_regfile_fpga  — pick the FPGA regfile.
+#   (default)        — pick the flop-based regfile (RegFileFF).
+#
+# Verilog defines that callers usually want to pass alongside:
+#   +define+SYNTHESIS  — drop assertions and behavioural-only branches.
+#                        Pass when using `-t synthesis`.
+#   +define+RVFI       — expose the RVFI port. Required when using
+#                        ibex_top_tracing; harmless on ibex_top.
+
+package:
+  name: ibex
+
+# No external Bender dependencies — everything Ibex needs is vendored
+# under vendor/lowrisc_ip and dv/uvm/core_ibex/common/prim.
+dependencies: {}
+
+# Include directories that consumers of this package will need on the
+# compiler include path. prim_assert.sv uses backtick `include` to pull
+# in macro headers from these directories.
+export_include_dirs:
+  - vendor/lowrisc_ip/ip/prim/rtl
+  - vendor/lowrisc_ip/dv/sv/dv_utils
+  - dv/uvm/core_ibex/common/prim
+  - formal/data_ind_timing
+
+sources:
+  # ----------------------------------------------------------------------
+  # Packages
+  # ----------------------------------------------------------------------
+  - dv/uvm/core_ibex/common/prim/prim_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_ram_1p_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_cipher_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_mubi_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_count_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_util_pkg.sv
+  - rtl/ibex_pkg.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_assert.sv
+  - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_buf.sv
+  - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_clock_gating.sv
+  - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_ram_1p.sv
+  - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_flop.sv
+  - vendor/lowrisc_ip/ip/prim_generic/rtl/prim_generic_clock_mux2.sv
+  - dv/uvm/core_ibex/common/prim/prim_buf.sv
+  - dv/uvm/core_ibex/common/prim/prim_clock_gating.sv
+  - dv/uvm/core_ibex/common/prim/prim_ram_1p.sv
+  - dv/uvm/core_ibex/common/prim/prim_flop.sv
+  - dv/uvm/core_ibex/common/prim/prim_clock_mux2.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_28_22_enc.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_28_22_dec.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_39_32_enc.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_39_32_dec.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_inv_39_32_enc.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_secded_inv_39_32_dec.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_lfsr.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_count.sv
+  - vendor/lowrisc_ip/ip/prim/rtl/prim_ram_1p_scr.sv
+
+  # ----------------------------------------------------------------------
+  # Ibex core RTL — everything required to elaborate `ibex_top`.
+  # ----------------------------------------------------------------------
+  - rtl/ibex_alu.sv
+  - rtl/ibex_branch_predict.sv
+  - rtl/ibex_compressed_decoder.sv
+  - rtl/ibex_controller.sv
+  - rtl/ibex_core.sv
+  - rtl/ibex_counter.sv
+  - rtl/ibex_cs_registers.sv
+  - rtl/ibex_csr.sv
+  - rtl/ibex_decoder.sv
+  - rtl/ibex_dummy_instr.sv
+  - rtl/ibex_ex_block.sv
+  - rtl/ibex_fetch_fifo.sv
+  - rtl/ibex_icache.sv
+  - rtl/ibex_id_stage.sv
+  - rtl/ibex_if_stage.sv
+  - rtl/ibex_load_store_unit.sv
+  - rtl/ibex_lockstep.sv
+  - rtl/ibex_multdiv_fast.sv
+  - rtl/ibex_multdiv_slow.sv
+  - rtl/ibex_pmp.sv
+  - rtl/ibex_prefetch_buffer.sv
+  - rtl/ibex_wb_stage.sv
+
+  # ----------------------------------------------------------------------
+  # Technology dependent register file.
+  # ----------------------------------------------------------------------
+  - target: ibex_regfile_latch
+    files:
+      - vendor/lowrisc_ip/ip/prim/rtl/prim_onehot_enc.sv
+      - vendor/lowrisc_ip/ip/prim/rtl/prim_onehot_check.sv
+      - vendor/lowrisc_ip/ip/prim/rtl/prim_onehot_mux.sv
+      - rtl/ibex_register_file_latch.sv
+
+  - target: ibex_regfile_fpga
+    files:
+      - rtl/ibex_register_file_fpga.sv
+
+  - target: not(any(ibex_regfile_latch, ibex_regfile_fpga))
+    files:
+      - rtl/ibex_register_file_ff.sv
+
+  # ----------------------------------------------------------------------
+  # Top-level
+  # ----------------------------------------------------------------------
+  - rtl/ibex_top.sv
+
+  # ----------------------------------------------------------------------
+  # Tracer + tracing-wrapped top. Opt-in via `-t ibex_tracing`.
+  # The tracer requires `+define+RVFI` to be passed at compile time.
+  # ----------------------------------------------------------------------
+  - target: ibex_tracing
+    files:
+      - rtl/ibex_tracer_pkg.sv
+      - rtl/ibex_tracer.sv
+      - rtl/ibex_top_tracing.sv
