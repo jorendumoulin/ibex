@@ -590,6 +590,15 @@ package ibex_pkg;
     CSR_SECURESEED     = 12'h7C1
   } csr_num_e;
 
+  // External CSRs: accesses in this range are not handled by the core,
+  // but go out on the csr_ext_* interface (see ibex_core).
+  parameter logic [11:0] CSR_EXT_START = 12'h800;
+  parameter logic [11:0] CSR_EXT_END  = 12'hB00;
+
+  function automatic logic csr_is_ext(logic [11:0] addr);
+    return (CSR_EXT_START <= addr) && (addr < CSR_EXT_END);
+  endfunction
+
   // CSR pmp-related offsets
   parameter logic [11:0] CSR_OFF_PMP_CFG  = 12'h3A0; // pmp_cfg  @ 12'h3a0 - 12'h3a3
   parameter logic [11:0] CSR_OFF_PMP_ADDR = 12'h3B0; // pmp_addr @ 12'h3b0 - 12'h3bf

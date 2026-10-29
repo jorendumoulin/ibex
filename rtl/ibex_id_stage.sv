@@ -108,7 +108,10 @@ module ibex_id_stage #(
   input  logic                      csr_mstatus_tw_i,
   input  logic                      illegal_csr_insn_i,
   input  logic                      data_ind_timing_i,
-  input  logic                      stall_csr_i,
+
+  // External CSR handshake
+  output logic                      csr_ext_valid_o,
+  input  logic                      csr_ext_ready_i,
 
   // Interface to load store unit
   output logic                      lsu_req_o,
@@ -522,7 +525,8 @@ module ibex_id_stage #(
   // No flush is triggered for a small number of specific CSRs. These are ones that have been
   // specifically identified to be a) likely to be modified in exception handlers and b) safe to
   // alter without a flush.
-  assign no_flush_csr_addr = csr_addr_o inside {CSR_MSCRATCH, CSR_MEPC};
+  // External CSRs live outside the core and cannot affect it, so they never need a flush.
+  assign no_flush_csr_addr = (csr_addr_o inside {CSR_MSCRATCH, CSR_MEPC}) || csr_is_ext(csr_addr_o);
 
   assign csr_pipe_flush = (csr_op_en_o == 1)                                         &&
                           (csr_op_o inside {CSR_OP_WRITE, CSR_OP_SET, CSR_OP_CLEAR}) &&
@@ -630,7 +634,6 @@ module ibex_id_stage #(
 
     .stall_id_i(stall_id),
     .stall_wb_i(stall_wb),
-    .stall_csr_i(stall_csr_i),
     .flush_id_o(flush_id),
     .ready_wb_i(ready_wb_i),
 
@@ -655,6 +658,20 @@ module ibex_id_stage #(
   // access is illegal. A combinational loop would be created if csr_op_en_o was used along (as
   // asserting it for an illegal csr access would result in a flush that would need to deassert it).
   assign csr_op_en_o             = csr_access_o & instr_executing & instr_id_done_o;
+
+  // External CSR access.
+  // The request is raised while the instruction is executing, and ID/EX
+  // stalls until it is accepted, so the instruction completes (csr_op_en_o, retire, any flush) in
+  // the same cycle as the handshake.
+  // It can't use csr_op_en_o: that needs instr_id_done_o, which
+  // is low while stalled. ready_wb_i makes sure that, with a writeback stage, an accepted access
+  // always completes, so it is never issued twice.
+  logic csr_ext_req;
+  logic stall_csr_ext;
+  assign csr_ext_req     = csr_access_o & csr_is_ext(csr_addr_o) & instr_executing &
+                           ~illegal_insn_o & ready_wb_i;
+  assign stall_csr_ext   = csr_ext_req & ~csr_ext_ready_i;
+  assign csr_ext_valid_o = csr_ext_req;
 
   assign alu_operator_ex_o           = alu_operator;
   assign alu_operand_a_ex_o          = alu_operand_a;
@@ -880,13 +897,13 @@ module ibex_id_stage #(
   // Stall ID/EX stage for reason that relates to instruction in ID/EX, update assertion below if
   // modifying this.
   assign stall_id = stall_ld_hz | stall_mem | stall_multdiv | stall_jump | stall_branch |
-                      stall_alu;
+                      stall_alu | stall_csr_ext;
 
   // Generally illegal instructions have no reason to stall, however they must still stall waiting
   // for outstanding memory requests so exceptions related to them take priority over the illegal
   // instruction exception.
   `ASSERT(IllegalInsnStallMustBeMemStall, illegal_insn_o & stall_id |-> stall_mem &
-    ~(stall_ld_hz | stall_multdiv | stall_jump | stall_branch | stall_alu))
+    ~(stall_ld_hz | stall_multdiv | stall_jump | stall_branch | stall_alu | stall_csr_ext))
 
   assign instr_done = ~stall_id & ~flush_id & instr_executing;
 
