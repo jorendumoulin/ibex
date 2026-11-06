@@ -302,28 +302,13 @@ module ibex_core import ibex_pkg::*; #(
                                        // with wrong privilege level,
                                        // or missing write permissions
 
-  // External CSR control signals for addresses 0x800-0xAFF
+  // External CSR control signals
   logic        csr_ext_access;         // Indicates if current CSR operation is external
-  logic        csr_ext_op_en;          // External CSR operation enable
-  logic        csr_ext_stall;          // Stall signal when external handler is not ready
-
-  // Detect CSR operations in the external range (0x800-0xAFF)
-  // These operations will be routed externally instead of handled internally
-  assign csr_ext_access = csr_access & (csr_addr >= 12'h800) & (csr_addr <= 12'hAFF);
-  assign csr_ext_op_en = csr_ext_access & csr_op_en;
-
-  // External CSR interface control
-  // csr_ext_valid_o is asserted when an external CSR operation is ready to be processed
-  assign csr_ext_valid_o = csr_ext_op_en;
+  assign csr_ext_access  = csr_access & csr_is_ext(csr_addr);
   assign csr_ext_addr_o  = csr_addr;
   assign csr_ext_wdata_o = csr_wdata;
   assign csr_ext_op_o    = csr_op;
 
-  // Stall logic: core stalls when external CSR handler is not ready
-  assign csr_ext_stall = csr_ext_op_en & ~csr_ext_ready_i;
-
-  // Select between internal and external CSR data
-  // For external operations, use data from external handler
   logic [31:0] csr_rdata_selected;
   assign csr_rdata_selected = csr_ext_access ? csr_ext_rdata_i : csr_rdata;
 
@@ -664,7 +649,8 @@ module ibex_core import ibex_pkg::*; #(
     .csr_mstatus_tw_i     (csr_mstatus_tw),
     .illegal_csr_insn_i   (illegal_csr_insn_id),
     .data_ind_timing_i    (data_ind_timing),
-    .stall_csr_i          (csr_ext_stall),
+    .csr_ext_valid_o      (csr_ext_valid_o),
+    .csr_ext_ready_i      (csr_ext_ready_i),
 
     // LSU
     .lsu_req_o     (lsu_req),  // to load store unit
@@ -1117,13 +1103,11 @@ module ibex_core import ibex_pkg::*; #(
     .boot_addr_i     (boot_addr_i),
 
     // Interface to CSRs     ( SRAM like                    )
-    // For external CSR operations, bypass internal CSR logic
-    // For internal CSR operations, process normally but respect stalling
     .csr_access_i(csr_access & ~csr_ext_access),
     .csr_addr_i  (csr_addr),
     .csr_wdata_i (csr_wdata),
     .csr_op_i    (csr_op),
-    .csr_op_en_i (csr_op_en & ~csr_ext_stall),
+    .csr_op_en_i (csr_op_en),
     .csr_rdata_o (csr_rdata),
 
     // Interrupt related control signals
